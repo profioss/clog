@@ -254,8 +254,8 @@ func (l *logger) pid() string {
 	return p
 }
 
-// LogFileOpen helper function opens log file with options suitable for logging i.e. O_APPEND, etc.
-func LogFileOpen(fname string) (fd *os.File, err error) {
+// OpenFile helper function opens log file with options suitable for logging i.e. O_APPEND, etc.
+func OpenFile(fname string) (fd *os.File, err error) {
 	err = os.MkdirAll(filepath.Dir(fname), os.ModePerm)
 	if err != nil {
 		return
