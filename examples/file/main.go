@@ -10,7 +10,7 @@ import (
 func main() {
 	fname := fmt.Sprintf("/tmp/clog-example-%d.log", os.Getpid())
 
-	fd, err := clog.LogFileOpen(fname) // use provided function for proper file opening (append mode etc.)
+	fd, err := clog.OpenFile(fname) // use provided function for proper file opening (append mode etc.)
 	if err != nil {
 		log.Fatal("Log file error:", err)
 	}
