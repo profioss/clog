@@ -16,6 +16,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
 )
 
 // TODO
@@ -57,14 +59,73 @@ type Logger interface {
 // Level represents the level of logging.
 type Level int
 
-// Different levels of logging.
+// Levels of logging.
 const (
-	DisabledLevel Level = iota
+	InvalidLevel Level = iota
+	DisabledLevel
 	ErrorLevel
 	WarnLevel
 	InfoLevel
 	DebugLevel
 )
+
+var logLevels = map[Level]string{
+	InvalidLevel:  "",
+	DisabledLevel: "disabled",
+	ErrorLevel:    "error",
+	WarnLevel:     "warning",
+	InfoLevel:     "info",
+	DebugLevel:    "debug",
+}
+
+// String returns log Level as string.
+func (l Level) String() string {
+	s, ok := logLevels[l]
+	if !ok {
+		return ""
+	}
+	return s
+}
+
+// Validate checks if log Level is valid.
+func (l Level) Validate() error {
+	if l == InvalidLevel {
+		return fmt.Errorf("log level is InvalidLevel, probably not specified")
+	}
+
+	for lx := range logLevels {
+		if lx == l {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("unknown log level %d", l)
+}
+
+// LevelFromString returns log level from given string.
+// Valid string parameters are: "disabled" | "error" | "warning" | "info" | "debug"
+func LevelFromString(s string) (Level, error) {
+	str := strings.TrimSpace(strings.ToLower(s))
+	hint := make([]Level, 0, len(logLevels))
+
+	for l, ls := range logLevels {
+		if ls == str {
+			return l, nil
+		}
+		if l != InvalidLevel {
+			hint = append(hint, l)
+		}
+	}
+
+	// hint should be sorted by level
+	sort.Slice(hint, func(i, j int) bool { return hint[i] < hint[j] })
+	hintStr := make([]string, 0, len(hint))
+	for _, l := range hint {
+		hintStr = append(hintStr, l.String())
+	}
+
+	return InvalidLevel, fmt.Errorf("%q is not valid log level; use one of: %s", s, strings.Join(hintStr, " | "))
+}
 
 type logger struct {
 	level   Level
@@ -82,7 +143,7 @@ type logger struct {
 func New(w io.Writer, level string, verbose bool) (Logger, error) {
 	l := &logger{w: w, verbose: verbose}
 
-	lv, err := levelOfStr(level)
+	lv, err := LevelFromString(level)
 	if err != nil {
 		return l, err
 	}
@@ -263,27 +324,4 @@ func OpenFile(fname string) (fd *os.File, err error) {
 
 	fd, err = os.OpenFile(fname, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	return
-}
-
-// levelOfString returns log level from provided string.
-// Valid string parameters are: "disabled" | "error" | "warning" | "info" | "debug"
-func levelOfStr(s string) (Level, error) {
-	level := InfoLevel
-	switch s {
-	case "disabled":
-		level = DisabledLevel
-	case "error":
-		level = ErrorLevel
-	case "warning":
-		level = WarnLevel
-	case "info":
-		level = InfoLevel
-	case "debug":
-		level = DebugLevel
-	default:
-		return level,
-			fmt.Errorf("invalid log level: %s; use one of: disabled | error | warning | info | debug ", s)
-	}
-
-	return level, nil
 }
